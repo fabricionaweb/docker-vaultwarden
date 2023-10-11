@@ -1,6 +1,6 @@
 #!/usr/bin/with-contenv sh
 
-LOGS_DIR=$(dirname "$LOG_FILE")
+LOGS_DIR="$(dirname "$LOG_FILE")"
 
 # check if logs folder exists and create it
 if [[ ! -d "$LOGS_DIR" ]]; then
