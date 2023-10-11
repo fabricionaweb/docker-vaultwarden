@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:1-labs
 FROM public.ecr.aws/docker/library/alpine:3.18 AS base
 ENV TZ=UTC
+WORKDIR /src
 
 # source backend stage =========================================================
 FROM base AS source-app
-WORKDIR /src
 
 # get and extract source from git
 ARG VERSION
@@ -12,7 +12,6 @@ ADD https://github.com/dani-garcia/vaultwarden.git#$VERSION ./
 
 # source web stage =============================================================
 FROM base AS source-web
-WORKDIR /src
 
 # get and extract source (vaultwarden patched) from git
 ARG VERSION_WEB
@@ -21,7 +20,6 @@ ADD https://github.com/dani-garcia/bw_web_builds.git#v$VERSION_WEB ./
 # backend stage =--=============================================================
 FROM base AS build-backend
 ENV CARGO_PROFILE_RELEASE_STRIP=symbols CARGO_PROFILE_RELEASE_PANIC=abort
-WORKDIR /src
 
 # build dependencies
 RUN apk add --no-cache cargo sqlite-dev libpq-dev mimalloc2-dev
@@ -41,11 +39,11 @@ COPY --from=source-app /src/src ./src
 ARG VERSION
 ENV VW_VERSION=$VERSION
 RUN cargo build --release --features $FEATURES --frozen && \
-    mv ./target/release /build
+    mv ./target/release /build && \
+    strip /build/vaultwarden
 
 # patch frontend stage =========================================================
 FROM base AS patch-frontend
-WORKDIR /src
 
 # dependencies
 RUN apk add --no-cache git bash
@@ -66,7 +64,6 @@ RUN bash -O globstar -c 'cp --verbose --parents ./**/package*.json /tmp'
 
 # frontend stage ===============================================================
 FROM base AS build-frontend
-WORKDIR /src
 
 # build dependencies
 RUN apk add --no-cache build-base python3 git nodejs-current && corepack enable npm
