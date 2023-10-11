@@ -33,14 +33,12 @@ COPY --from=source-app /src/Cargo.* /src/build.rs ./
 ARG FEATURES=sqlite,postgresql,enable_mimalloc
 RUN cargo build --release --features $FEATURES --locked
 
-# source and build
+# build app
 COPY --from=source-app /src/migrations ./migrations
 COPY --from=source-app /src/src ./src
 ARG VERSION
 ENV VW_VERSION=$VERSION
-RUN cargo build --release --features $FEATURES --frozen && \
-    mv ./target/release /build && \
-    strip /build/vaultwarden
+RUN cargo build --release --features $FEATURES --frozen
 
 # patch frontend stage =========================================================
 FROM base AS patch-frontend
@@ -79,8 +77,7 @@ COPY --from=patch-frontend /src/web-vault/libs ./libs
 COPY --from=patch-frontend /src/web-vault/apps/web ./apps/web
 RUN cd ./apps/web && \
     npm run dist:oss:selfhost && \
-    find ./build -name "*.map" -type f -delete && \
-    mv ./build /build
+    find ./build -name "*.map" -type f -delete
 
 # runtime stage ================================================================
 FROM base
@@ -97,8 +94,8 @@ EXPOSE 8000
 RUN apk add --no-cache tzdata s6-overlay logrotate libgcc libpq curl
 
 # copy files
-COPY --from=build-backend /build/vaultwarden /app/
-COPY --from=build-frontend /build /app/web-vault
+COPY --from=build-backend /src/target/release/vaultwarden /app/
+COPY --from=build-frontend /src/apps/web/build /app/web-vault
 COPY ./rootfs/. /
 
 # run using s6-overlay
