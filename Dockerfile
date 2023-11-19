@@ -90,13 +90,13 @@ WORKDIR /config
 VOLUME /config
 EXPOSE 8000
 
-# runtime dependencies
-RUN apk add --no-cache tzdata s6-overlay logrotate libgcc libpq curl
-
 # copy files
 COPY --from=build-backend /src/target/release/vaultwarden /app/
 COPY --from=build-frontend /src/apps/web/build /app/web-vault
 COPY ./rootfs/. /
+
+# runtime dependencies
+RUN apk add --no-cache tzdata s6-overlay logrotate libgcc libpq curl
 
 # run using s6-overlay
 ENTRYPOINT ["/init"]
