@@ -10,13 +10,6 @@ FROM base AS source-app
 ARG VERSION
 ADD https://github.com/dani-garcia/vaultwarden.git#$VERSION ./
 
-# source web stage =============================================================
-FROM base AS source-web
-
-# get and extract source (vaultwarden patched) from git
-ARG VERSION_WEB
-ADD https://github.com/dani-garcia/bw_web_builds.git#v$VERSION_WEB ./
-
 # backend stage =--=============================================================
 FROM base AS build-backend
 ENV CARGO_PROFILE_RELEASE_STRIP=symbols CARGO_PROFILE_RELEASE_PANIC=abort
@@ -41,44 +34,13 @@ ARG VERSION
 ENV VW_VERSION=$VERSION
 RUN cargo build --release --features $FEATURES --frozen
 
-# patch frontend stage =========================================================
-FROM base AS patch-frontend
-
-# dependencies
-RUN apk add --no-cache git bash
-
-# get and extract source (bitwarden) from git
-ARG VERSION_WEB
-ADD https://github.com/bitwarden/clients.git#web-v$VERSION_WEB ./web-vault
-
-# prepare project with patches
-COPY --from=source-web /src/patches ./patches
-COPY --from=source-web /src/resources ./resources
-COPY --from=source-web /src/scripts/.script_env /src/scripts/apply_patches.sh \
-        /src/scripts/patch_web_vault.sh ./scripts/
-RUN ./scripts/patch_web_vault.sh
-
-# create a temporary folder to all package.json (for the workspace tree)
-RUN bash -O globstar -c 'cp --verbose --parents ./**/package*.json /tmp'
-
 # frontend stage ===============================================================
 FROM base AS build-frontend
 
-# build dependencies
-RUN apk add --no-cache build-base python3 git nodejs-current && corepack enable npm
-
-# node_modules
-COPY --from=patch-frontend /src/web-vault/tsconfig.json /src/web-vault/tailwind.config.js /src/web-vault/angular.json ./
-COPY --from=patch-frontend /tmp/web-vault/. ./
-RUN npm ci --fund=false --audit=false --ignore-scripts
-
-# frontend source and build
-COPY --from=patch-frontend /src/web-vault/bitwarden_license ./bitwarden_license
-COPY --from=patch-frontend /src/web-vault/libs ./libs
-COPY --from=patch-frontend /src/web-vault/apps/web ./apps/web
-RUN cd ./apps/web && \
-    npm run dist:oss:selfhost && \
-    find ./build -name "*.map" -type f -delete
+# grab it pre-build from git (cant build this shit on alpine, it uses node-sass)
+ARG VERSION_WEB
+RUN wget -qO- https://github.com/dani-garcia/bw_web_builds/releases/download/v$VERSION_WEB/bw_web_v$VERSION_WEB.tar.gz | tar xz && \
+    find ./web-vault -name "*.map" -type f -delete
 
 # runtime stage ================================================================
 FROM base
@@ -93,7 +55,7 @@ EXPOSE 8000
 
 # copy files
 COPY --from=build-backend /src/target/release/vaultwarden /app/
-COPY --from=build-frontend /src/apps/web/build /app/web-vault
+COPY --from=build-frontend /src/web-vault /app/web-vault
 COPY ./rootfs/. /
 
 # runtime dependencies
