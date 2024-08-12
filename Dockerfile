@@ -3,6 +3,10 @@ FROM public.ecr.aws/docker/library/alpine:3.20 AS base
 ENV TZ=UTC
 WORKDIR /src
 
+# trying to force cache to reload even for multi-staged using build-args
+ARG CACHEBUST
+RUN echo "$CACHEBUST"
+
 # source backend stage =========================================================
 FROM base AS source-app
 
@@ -15,8 +19,8 @@ FROM base AS build-backend
 ENV CARGO_PROFILE_RELEASE_STRIP=symbols CARGO_PROFILE_RELEASE_PANIC=abort
 
 # build dependencies
-RUN apk add --no-cache sqlite-dev libpq-dev mimalloc2-dev && \
-    apk add --no-cache cargo --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community
+RUN apk add --no-cache cargo --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community && \
+    apk add --no-cache sqlite-dev libpq-dev mimalloc2-dev
 
 # dummy project to build dependencies
 RUN mkdir ./src ./.cargo && \
