@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1-labs
-FROM public.ecr.aws/docker/library/alpine:3.20 AS base
+FROM public.ecr.aws/docker/library/alpine:3.21 AS base
 ENV TZ=UTC
 WORKDIR /src
 
@@ -24,6 +24,7 @@ RUN mkdir ./src ./.cargo && \
 
 # build dependencies
 COPY --from=source-app /src/Cargo.* /src/build.rs ./
+COPY --from=source-app /src/macros ./macros
 ARG FEATURES=sqlite,postgresql,enable_mimalloc
 RUN cargo build --release --features $FEATURES --locked
 
