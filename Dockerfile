@@ -19,22 +19,15 @@ ENV CARGO_PROFILE_RELEASE_STRIP=symbols CARGO_PROFILE_RELEASE_PANIC=abort
 RUN apk add --no-cache cargo --repository=https://dl-cdn.alpinelinux.org/alpine/edge/main && \
     apk add --no-cache sqlite-dev libpq-dev mimalloc2-dev
 
-# dummy project to build dependencies
-RUN mkdir ./src ./.cargo && \
-    echo -e "fn main() { println!(\"Hello, world!\"); }" > ./src/main.rs
-
-# build dependencies
-COPY --from=source-app /src/Cargo.* /src/build.rs ./
-COPY --from=source-app /src/macros ./macros
-ARG FEATURES=sqlite,postgresql,enable_mimalloc
-RUN cargo build --release --features $FEATURES --locked
-
 # build app
+COPY --from=source-app /src/Cargo.* /src/build.rs ./
 COPY --from=source-app /src/migrations ./migrations
+COPY --from=source-app /src/macros ./macros
 COPY --from=source-app /src/src ./src
 ARG VERSION
 ENV VW_VERSION=$VERSION
-RUN cargo build --release --features $FEATURES --frozen
+ARG FEATURES=sqlite,postgresql,enable_mimalloc
+RUN cargo build --release --features $FEATURES
 
 # frontend stage ===============================================================
 FROM base AS build-frontend
