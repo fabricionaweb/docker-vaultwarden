@@ -8,7 +8,8 @@ FROM base AS source-app
 
 # get and extract source from git
 ARG VERSION
-ADD https://github.com/dani-garcia/vaultwarden.git#$VERSION ./
+ADD https://github.com/dani-garcia/vaultwarden/archive/refs/tags/$VERSION.tar.gz /tmp/source.tgz
+RUN tar --strip-components=1 -xf /tmp/source.tgz
 
 # backend stage =--=============================================================
 FROM base AS build-backend
@@ -40,8 +41,9 @@ FROM base AS build-frontend
 
 # grab it pre-build from git (cant build this shit on alpine, it uses node-sass)
 ARG VERSION_WEB
-RUN wget -qO- https://github.com/dani-garcia/bw_web_builds/releases/download/v$VERSION_WEB/bw_web_v$VERSION_WEB.tar.gz | tar xz && \
-    find ./web-vault -name "*.map" -type f -delete
+ADD https://github.com/dani-garcia/bw_web_builds/releases/download/v$VERSION_WEB/bw_web_v$VERSION_WEB.tar.gz /tmp/source.tgz
+RUN tar --strip-components=1 -xf /tmp/source.tgz && \
+    find ./ -name "*.map" -type f -delete
 
 # runtime stage ================================================================
 FROM base
@@ -56,7 +58,7 @@ EXPOSE 8000
 
 # copy files
 COPY --from=build-backend /src/target/release/vaultwarden /app/
-COPY --from=build-frontend /src/web-vault /app/web-vault
+COPY --from=build-frontend /src /app/web-vault
 COPY ./rootfs/. /
 
 # runtime dependencies
