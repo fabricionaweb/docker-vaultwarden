@@ -15,7 +15,7 @@ FROM base AS build-backend
 ENV CARGO_PROFILE_RELEASE_STRIP=symbols CARGO_PROFILE_RELEASE_PANIC=abort
 
 # build dependencies
-RUN apk add --no-cache cargo --repository=http://dl-cdn.alpinelinux.org/alpine/edge/main && \
+RUN apk add --no-cache cargo --repository=https://dl-cdn.alpinelinux.org/alpine/edge/main && \
     apk add --no-cache sqlite-dev libpq-dev mimalloc2-dev
 
 # dummy project to build dependencies
